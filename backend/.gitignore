@@ -1,0 +1,39 @@
+# Environments and secrets
+.env
+.env.local
+.env.*
+!.env.example
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Unit test / coverage / cache directories
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Project-specific data directory
+data/
+
+# IDEs / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db
