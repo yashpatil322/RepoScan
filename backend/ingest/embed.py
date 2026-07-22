@@ -35,7 +35,7 @@ from .languages import SUPPORTED_EXTENSIONS
 CHROMA_DB_PATH = os.environ.get("CHROMA_DB_PATH", "./data/chroma_db")
 REPOS_REGISTRY_PATH = os.environ.get("REPOS_REGISTRY_PATH", "./data/repos_registry.json")
 EMBED_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-EMBED_BATCH_SIZE = 64
+EMBED_BATCH_SIZE = 16
 CHROMA_UPSERT_BATCH = 500  # ChromaDB's max per call
 
 
@@ -44,7 +44,7 @@ CHROMA_UPSERT_BATCH = 500  # ChromaDB's max per call
 # ──────────────────────────────────────────────────────────────────────
 
 _chroma_client: chromadb.PersistentClient | None = None
-_embed_model: SentenceTransformer | None = None
+_embed_model = None
 
 
 def get_chroma_client() -> chromadb.PersistentClient:
@@ -60,6 +60,11 @@ def get_embed_model():
     """Get or create the sentence-transformer embedding model (singleton)."""
     global _embed_model
     if _embed_model is None:
+        try:
+            import torch
+            torch.set_num_threads(1)
+        except Exception:
+            pass
         from sentence_transformers import SentenceTransformer
         _embed_model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
     return _embed_model
