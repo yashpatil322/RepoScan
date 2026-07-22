@@ -1,0 +1,71 @@
+# Render.com deployment configuration
+# Docs: https://render.com/docs/yaml-spec
+#
+# This file lives at the ROOT of the repo.
+# Render reads it automatically when you connect your GitHub repo.
+
+services:
+  - type: web
+    name: reposcan-api
+    runtime: python
+
+    # ── Where to find the app ─────────────────────────────────────────
+    # The backend/ subfolder is the Python project root.
+    rootDir: backend
+
+    # ── Python version ────────────────────────────────────────────────
+    # 3.11 is the sweet spot: stable, all packages have prebuilt wheels,
+    # avoids the type-annotation quirks of 3.13 on Windows.
+    # (Render Linux doesn't have the grpc DLL block issue, so 3.11 is fine.)
+    pythonVersion: "3.11"
+
+    # ── Region ───────────────────────────────────────────────────────
+    # Singapore is closest to India. Use "ohio" for US East.
+    region: singapore
+
+    # ── Plan ─────────────────────────────────────────────────────────
+    # free: 512MB RAM, spins down after 15 min idle, ephemeral disk.
+    # starter ($7/mo): 512MB RAM, always-on, persistent disk available.
+    plan: free
+
+    # ── Build ────────────────────────────────────────────────────────
+    buildCommand: pip install -r requirements.txt && python preload_model.py
+
+    # ── Start ────────────────────────────────────────────────────────
+    # $PORT is injected by Render automatically.
+    # --workers 1: sentence-transformers + chromadb use ~400MB together,
+    #              so a single worker avoids OOM on the free tier.
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1
+
+    # ── Health check ─────────────────────────────────────────────────
+    # Render pings this to verify the service is alive after deploy.
+    healthCheckPath: /health
+
+    # ── Environment variables ─────────────────────────────────────────
+    envVars:
+      # REQUIRED: Set this in the Render dashboard under Environment.
+      # Get a free key at https://aistudio.google.com/apikey
+      - key: GEMINI_API_KEY
+        sync: false          # "sync: false" means you set it manually in the dashboard
+
+      # Where ChromaDB stores its vector data.
+      # On free tier this is ephemeral (wiped on redeploy).
+      # On starter tier, point this at the persistent disk mount path.
+      - key: CHROMA_DB_PATH
+        value: ./data/chroma_db
+
+      # Where the repo registry JSON is stored.
+      - key: REPOS_REGISTRY_PATH
+        value: ./data/repos_registry.json
+
+      # Optional: override the Gemini model
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+
+    # ── Persistent Disk (OPTIONAL — starter plan only, $1/month) ─────
+    # Uncomment the block below if you upgrade to starter plan.
+    # Without this, ChromaDB data is wiped every time the service redeploys.
+    # disk:
+    #   name: reposcan-data
+    #   mountPath: /opt/render/project/src/data   # maps to backend/data/
+    #   sizeGB: 1

@@ -27,6 +27,13 @@ Run with:
     uvicorn api.main:app --reload --port 8000
 """
 
+# ── MUST be the first import ──────────────────────────────────────────
+# Stubs out gRPC modules before ChromaDB's import chain loads cygrpc.pyd.
+# Windows Application Control policies block that DLL on some machines.
+import grpc_patch
+grpc_patch.apply()
+# ─────────────────────────────────────────────────────────────────────
+
 import json
 import uuid
 import asyncio
