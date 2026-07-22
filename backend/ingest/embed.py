@@ -21,7 +21,7 @@ import hashlib
 from datetime import datetime, timezone
 
 import chromadb
-from sentence_transformers import SentenceTransformer
+# sentence_transformers is imported lazily inside get_embed_model() to ensure fast API startup
 
 from .clone import clone_repo, get_code_files, cleanup_repo, generate_repo_id
 from .parse import parse_repo
@@ -56,10 +56,11 @@ def get_chroma_client() -> chromadb.PersistentClient:
     return _chroma_client
 
 
-def get_embed_model() -> SentenceTransformer:
+def get_embed_model():
     """Get or create the sentence-transformer embedding model (singleton)."""
     global _embed_model
     if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
         _embed_model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
     return _embed_model
 

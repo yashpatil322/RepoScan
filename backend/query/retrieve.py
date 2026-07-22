@@ -10,8 +10,6 @@ Handles:
 - Cross-repo search (search across all indexed repos at once)
 """
 
-from sentence_transformers import SentenceTransformer
-
 from ingest.embed import (
     get_chroma_client,
     get_embed_model,
