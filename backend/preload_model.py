@@ -11,7 +11,7 @@ sentence-transformers — critical for staying under Render's 512MB limit.
 import os
 import sys
 
-MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 print(f"[preload] Downloading fastembed model: {MODEL_NAME}")
 

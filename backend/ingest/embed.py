@@ -35,7 +35,7 @@ from .languages import SUPPORTED_EXTENSIONS
 
 CHROMA_DB_PATH = os.environ.get("CHROMA_DB_PATH", "./data/chroma_db")
 REPOS_REGISTRY_PATH = os.environ.get("REPOS_REGISTRY_PATH", "./data/repos_registry.json")
-EMBED_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+EMBED_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 EMBED_BATCH_SIZE = 16
 CHROMA_UPSERT_BATCH = 500  # ChromaDB's max per call
 
