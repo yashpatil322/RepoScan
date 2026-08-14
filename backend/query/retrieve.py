@@ -46,10 +46,11 @@ def retrieve(
         - repo_id: which repo this chunk belongs to
     """
     model = get_embed_model()
+    # fastembed encode() returns list[list[float]] directly — no .tolist() needed
     question_embedding = model.encode(
         [question],
         normalize_embeddings=True,
-    ).tolist()
+    )
 
     # Build ChromaDB where filter
     where_filter = _build_where_filter(filter_language, filter_chunk_type)

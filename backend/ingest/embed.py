@@ -21,7 +21,8 @@ import hashlib
 from datetime import datetime, timezone
 
 import chromadb
-# sentence_transformers is imported lazily inside get_embed_model() to ensure fast API startup
+# fastembed uses ONNX Runtime (not PyTorch) — ~80MB RAM vs ~400MB for sentence-transformers.
+# This is the key fix for staying under Render's 512MB free tier limit.
 
 from .clone import clone_repo, get_code_files, cleanup_repo, generate_repo_id
 from .parse import parse_repo
@@ -57,17 +58,45 @@ def get_chroma_client() -> chromadb.PersistentClient:
 
 
 def get_embed_model():
-    """Get or create the sentence-transformer embedding model (singleton)."""
+    """
+    Get or create the embedding model singleton.
+
+    Uses fastembed (ONNX Runtime) instead of sentence-transformers (PyTorch).
+    Memory footprint: ~80MB vs ~400MB — essential for Render's 512MB free tier.
+
+    Returns a thin wrapper with a .encode(texts, normalize_embeddings) interface
+    so the rest of the codebase doesn't need to know about fastembed's API.
+    """
     global _embed_model
     if _embed_model is None:
-        try:
-            import torch
-            torch.set_num_threads(1)
-        except Exception:
-            pass
-        from sentence_transformers import SentenceTransformer
-        _embed_model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
+        from fastembed import TextEmbedding
+        _embed_model = _FastEmbedWrapper(EMBED_MODEL_NAME)
     return _embed_model
+
+
+class _FastEmbedWrapper:
+    """
+    Thin wrapper around fastembed.TextEmbedding that exposes the same
+    .encode(texts, normalize_embeddings, batch_size) interface as
+    sentence-transformers — so nothing else in the codebase needs to change.
+    """
+
+    def __init__(self, model_name: str):
+        from fastembed import TextEmbedding
+        # fastembed model name mapping
+        # all-MiniLM-L6-v2 is natively supported by fastembed
+        self._model = TextEmbedding(model_name=model_name)
+
+    def encode(self, texts: list, normalize_embeddings: bool = True,
+               batch_size: int = 16, show_progress_bar: bool = False) -> list:
+        """
+        Encode a list of texts into embedding vectors.
+        Returns a list of lists (same shape as sentence-transformers numpy array.tolist()).
+        normalize_embeddings is always True in fastembed (cosine-normalized by default).
+        """
+        embeddings = list(self._model.embed(texts, batch_size=batch_size))
+        # Convert numpy arrays to plain Python lists
+        return [emb.tolist() if hasattr(emb, 'tolist') else list(emb) for emb in embeddings]
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -333,12 +362,13 @@ def ingest_repo(repo_url: str, progress_callback=None) -> dict:
         model = get_embed_model()
         texts_to_embed = [chunk["enriched_text"] for chunk in all_chunks]
 
+        # fastembed.encode() already returns a list of lists — no .tolist() needed
         embeddings = model.encode(
             texts_to_embed,
             batch_size=EMBED_BATCH_SIZE,
             show_progress_bar=False,
             normalize_embeddings=True,
-        ).tolist()
+        )
 
         # ── Step 5: Store in ChromaDB ──────────────────────────────
         _update("embedding", f"Storing {len(all_chunks)} chunks in ChromaDB...")
